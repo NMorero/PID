@@ -1,0 +1,251 @@
+<html>
+<head>
+  <title>PID</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-giJF6kkoqNQ00vy+HMDP7azOuL0xtbfIcaT9wjKHr8RbDVddVHyTfAAsrekwKmP1" crossorigin="anonymous">
+
+  <script type="text/javascript" src="public/js/eventemitter2.min.js"></script>
+  <script type="text/javascript" src="public/js/roslib.min.js"></script>
+</head>
+<body>
+    <style>
+        /* Chrome, Safari, Edge, Opera */
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+        }
+
+        /* Firefox */
+        input[type=number] {
+        -moz-appearance: textfield;
+        }
+
+
+        input:focus, textarea:focus, select:focus{
+            outline: none;
+        }
+
+        .out{
+            border: none;
+            border-bottom: 1px solid gray;
+            width: 50px;
+        }
+
+        #main{
+            height: 100vh;
+        }
+
+        #content{
+            height: 50vh;
+            margin-top: 25vh;
+        }
+    </style>
+    <div id="main" class="container">
+        <div id="content" class="row p-4 justify-content-around ">
+            <div class="col-4 text-center">
+                <div class="col-12 text-center row">
+                    <label for="rangeX" class="form-label">X:  <input value="0" id="outX" class="text-center out" name="outX" type="number" step="0.01"></label>
+                    <input type="range" class="form-range col-5"  value="0" min="-0.4" max="0.4" step="0.01" id="rangeX">
+                </div>  
+                
+                <div class="col-12 text-center row">
+                    <label for="rangeY" class="form-label">Y:  <input value="0" id="outY" class="text-center out" name="outY" type="number" step="0.01"></label>
+                    <input type="range" class="form-range col-5"  value="0" min="-0.4" max="0.4" step="0.01" id="rangeY">
+                </div>
+        
+                <div class="col-12 text-center row">
+                    <label for="rangeZ" class="form-label">Z:  <input value="0" id="outZ" class="text-center out" name="outZ" type="number" step="0.01"></label>
+                    <input type="range" class="form-range col-5"  value="0" min="-0.4" max="0.4" step="0.01" id="rangeZ">
+                </div>
+    
+                <button id="setPID" type="button" class="btn btn-primary text-white col-10 mt-2">Set PID</button>
+            </div>
+            
+            <div class="col-4 text-center">
+                <div class="col-12 text-center row">
+                    <label for="rangeVel" class="form-label">Vel:  <input value="0" id="outVel" class="text-center out" name="outVel" type="number" step="0.01"></label>
+                    <input type="range" class="form-range col-5"  value="0" min="-0.4" max="0.4" step="0.01" id="rangeVel">
+                </div>  
+    
+                <button id="setVel" type="button" class="btn btn-primary text-white col-10 mt-2">Set VEL</button>
+                <button id="stopVel" type="button" class="btn btn-danger text-white col-10 mt-2">Stop</button>
+            </div>
+            
+        </div>
+    </div>
+    
+    <script>
+        var ros = new ROSLIB.Ros({
+            url : 'ws://localhost:9090'
+        });
+
+        ros.on('connection', function() {
+            console.log('Connected to websocket server.');
+        });
+
+        ros.on('error', function(error) {
+            console.log('Error connecting to websocket server: ', error);
+        });
+
+        ros.on('close', function() {
+            console.log('Connection to websocket server closed.');
+        });
+
+        var cmdVel = new ROSLIB.Topic({
+            ros : ros,
+            name : '/cmd_vel',
+            messageType : 'geometry_msgs/Twist'
+        });
+
+        var PID_topic = new ROSLIB.Topic({
+            ros : ros,
+            name : '/pid_tunning',
+            messageType : 'geometry_msgs/Vector3'
+        });
+
+        var setVel = document.getElementById('setVel')
+        var stopVel = document.getElementById('stopVel')
+        var setPID = document.getElementById('setPID')
+
+        var rangeX = document.getElementById('rangeX')
+        var outX = document.getElementById('outX')
+
+        var rangeY = document.getElementById('rangeY')
+        var outY = document.getElementById('outY')
+
+        var rangeZ = document.getElementById('rangeZ')
+        var outZ = document.getElementById('outZ')
+
+        var rangeVel = document.getElementById('rangeVel')
+        var outVel = document.getElementById('outVel')
+
+        rangeX.addEventListener("change", () => {
+            updateRangeInput(outX, rangeX.value)
+        });
+        rangeX.addEventListener("mousemove", () => {
+            updateRangeInput(outX, rangeX.value)
+        });
+
+        outX.addEventListener("change", () => {
+            updateRange(rangeX, outX)
+        });
+        outX.addEventListener("input", () => {
+            updateRange(rangeX, outX)
+        });
+
+
+        rangeY.addEventListener("change", () => {
+            updateRangeInput(outY, rangeY.value)
+        });
+        rangeY.addEventListener("mousemove", () => {
+            updateRangeInput(outY, rangeY.value)
+        });
+
+        outY.addEventListener("change", () => {
+            updateRange(rangeY, outY)
+        });
+        outY.addEventListener("input", () => {
+            updateRange(rangeY, outY)
+        });
+
+        rangeZ.addEventListener("change", () => {
+            updateRangeInput(outZ, rangeZ.value)
+        });
+        rangeZ.addEventListener("mousemove", () => {
+            updateRangeInput(outZ, rangeZ.value)
+        });
+
+        outZ.addEventListener("change", () => {
+            updateRange(rangeZ, outZ)
+        });
+        outZ.addEventListener("input", () => {
+            updateRange(rangeZ, outZ)
+        });
+
+        rangeVel.addEventListener("change", () => {
+            updateRangeInput(outVel, rangeVel.value)
+        });
+        rangeVel.addEventListener("mousemove", () => {
+            updateRangeInput(outVel, rangeVel.value)
+        });
+
+        outVel.addEventListener("change", () => {
+            updateRange(rangeVel, outVel)
+        });
+        outVel.addEventListener("input", () => {
+            updateRange(rangeVel, outVel)
+        });
+
+        setVel.addEventListener("click", sendSetVel);
+        stopVel.addEventListener("click", sendStopVel);
+        setPID.addEventListener("click", sendSetPID);
+
+        function updateRangeInput(input, value){
+            input.value = value;
+        }
+
+        function updateRange(range, input){
+            console.log(input.value);
+            if(input.value < 0.4 && input.value > -0.4){
+                range.value = input.value;
+            }else{
+                if(input.value < -0.4){
+                    input.value = -0.4; 
+                    range.value = -0.4;
+                }else if(input.value > 0.4){
+                    input.value = 0.4;
+                    range.value = 0.4;
+                }
+                
+            }
+        }
+
+        function sendSetPID(){
+            console.log(rangeX.value)
+            console.log(rangeY.value)
+            console.log(rangeZ.value)
+            var vector3 = new ROSLIB.Message({
+                data: {
+                    x: rangeX.value,
+                    y: rangeY.value,
+                    z: rangeZ.value
+                }
+            });
+            PID_topic.publish(vector3);
+        }
+        function sendSetVel(){
+            console.log(rangeVel.value)
+            var twist = new ROSLIB.Message({
+                linear : {
+                    x : parseFloat(rangeVel.value),
+                    y : 0,
+                    z : 0
+                },
+                angular : {
+                    x : 0,
+                    y : 0,
+                    z : 0
+                }
+            });
+            cmdVel.publish(twist);
+        }
+
+        function sendStopVel(){
+            var twist = new ROSLIB.Message({
+                linear : {
+                    x : 0,
+                    y : 0,
+                    z : 0
+                },
+                angular : {
+                    x : 0,
+                    y : 0,
+                    z : 0
+                }
+            });
+            cmdVel.publish(twist);
+        }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/js/bootstrap.bundle.min.js" integrity="sha384-ygbV9kiqUc6oa4msXn9868pTtWMgiQaeYH7/t7LECLbyPA2x65Kgf80OJFdroafW" crossorigin="anonymous"></script>
+</body>
+</html>
